@@ -84,21 +84,25 @@ public class MainActivity extends UnityPlayerActivity {
 
     }
 
-    void RunButtonTask(){
-        new appTask().execute();
+    public void CreateBandTile(){
+        new CreateBand().execute(true);
     }
 
-    void VolumeUp()
+    public void RemoveBandTiles(){
+        new CreateBand().execute(false);
+    }
+
+    public void VolumeUp()
     {
         AudioManager audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
         int volume = Math.min(audioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION)+10, audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION));
         audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, volume, 0);
     }
 
-    void VolumeDown()
+    public void VolumeDown()
     {
         AudioManager audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-        int volume = Math.max(audioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION)-10, 0);
+        int volume = Math.max(audioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION) - 10, 0);
         audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION,volume,0);
     }
 
@@ -150,17 +154,25 @@ public class MainActivity extends UnityPlayerActivity {
         }
     };
 
-    public class appTask extends AsyncTask<Void, Void, Void> {
+    public class CreateBand extends AsyncTask<Boolean, Void, Void> {
         @Override
-        protected Void doInBackground(Void... params) {
+        protected Void doInBackground(Boolean... params) {
             try {
-                if (getConnectedBandClient()) {
-                    appendToUI("Band is connected.\n");
-                    if (addTile()) {
-                        updatePages();
+                if(params.length>0) {
+                    boolean shouldAdd = params[0];
+                    if (getConnectedBandClient()) {
+                        appendToUI("Band is connected.\n");
+                        if (shouldAdd) {
+                            if (addTile()) {
+                                updatePages();
+                            } else
+                                appendToUI("Failed to add page");
+                        } else {
+                            removeTile();
+                        }
+                    } else {
+                        appendToUI("Band isn't connected. Please make sure bluetooth is on and the band is in range.\n");
                     }
-                } else {
-                    appendToUI("Band isn't connected. Please make sure bluetooth is on and the band is in range.\n");
                 }
             } catch (BandException e) {
                 String exceptionMessage="";
@@ -190,11 +202,11 @@ public class MainActivity extends UnityPlayerActivity {
         }
     }
 
-    private void appendToUI(final String string) {
+    public void appendToUI(final String string) {
         UnityPlayer.UnitySendMessage("MessageHandler","HandleText",string);
     }
 
-    private boolean doesTileExist(List<BandTile> tiles, UUID tileId) {
+    public boolean doesTileExist(List<BandTile> tiles, UUID tileId) {
         for (BandTile tile:tiles) {
             if (tile.getTileId().equals(tileId)) {
                 return true;
@@ -203,7 +215,7 @@ public class MainActivity extends UnityPlayerActivity {
         return false;
     }
 
-    private boolean addTile() throws Exception {
+    public boolean addTile() throws Exception {
         if (doesTileExist(client.getTileManager().getTiles().await(), tileId)) {
             return true;
         }
@@ -227,23 +239,28 @@ public class MainActivity extends UnityPlayerActivity {
         }
     }
 
-    private PageLayout createButtonLayout() {
+    public void removeTile() throws Exception {
+        appendToUI("Trying to Remove tile from the band\n");
+        client.getTileManager().removeTile(tileId);
+    }
+
+    public PageLayout createButtonLayout() {
         return new PageLayout(
                 new FlowPanel(15, 0, 260, 105, FlowPanelOrientation.VERTICAL)
-                        .addElements(new FilledButton(0, 5, 210, 45).setMargins(0, 5, 0 ,0).setId(12).setBackgroundColor(Color.RED))
-                        .addElements(new TextButton(0, 0, 210, 45).setMargins(0, 5, 0 ,0).setId(21).setPressedColor(Color.BLUE))
+                        .addElements(new TextButton(0, 5, 210, 45).setMargins(0, 5, 0 ,0).setId(1).setPressedColor(Color.BLUE))
+                        .addElements(new TextButton(0, 0, 210, 45).setMargins(0, 5, 0 ,0).setId(2).setPressedColor(Color.GREEN))
         );
     }
 
-    private void updatePages() throws BandIOException {
+    public void updatePages() throws BandIOException {
         client.getTileManager().setPages(tileId,
                 new PageData(pageId1, 0)
-                        .update(new FilledButtonData(12, Color.YELLOW))
-                        .update(new TextButtonData(21, "Text Button")));
+                        .update(new TextButtonData(1, "Volume Up"))
+                        .update(new TextButtonData(2, "Volume Down")));
         appendToUI("Send button page data to tile page \n\n");
     }
 
-    private boolean getConnectedBandClient() throws InterruptedException, BandException {
+    public boolean getConnectedBandClient() throws InterruptedException, BandException {
         if (client == null) {
             BandInfo[] devices = BandClientManager.getInstance().getPairedBands();
             if (devices.length == 0) {
@@ -393,7 +410,7 @@ public class MainActivity extends UnityPlayerActivity {
         super.onDestroy();
     }
 
-    private void appendToUI(final String string) {
+    void appendToUI(final String string) {
         this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
