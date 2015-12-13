@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -81,7 +82,7 @@ public class MainActivity extends UnityPlayerActivity {
         filter.addAction(TileEvent.ACTION_TILE_BUTTON_PRESSED);
         filter.addAction(TileEvent.ACTION_TILE_CLOSED);
         registerReceiver(messageReceiver, filter);
-
+        audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
     }
 
     public void CreateBandTile(){
@@ -92,18 +93,18 @@ public class MainActivity extends UnityPlayerActivity {
         new CreateBand().execute(false);
     }
 
+    private AudioManager audioManager;
+
     public void VolumeUp()
     {
-        AudioManager audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-        int volume = Math.min(audioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION)+10, audioManager.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION));
-        audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION, volume, 0);
+        int volume = Math.min(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)+1, audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volume, AudioManager.FLAG_SHOW_UI);
     }
 
     public void VolumeDown()
     {
-        AudioManager audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-        int volume = Math.max(audioManager.getStreamVolume(AudioManager.STREAM_NOTIFICATION) - 10, 0);
-        audioManager.setStreamVolume(AudioManager.STREAM_NOTIFICATION,volume,0);
+        int volume = Math.max(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) - 1, 0);
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volume,AudioManager.FLAG_SHOW_UI);
     }
 
     @Override
@@ -141,9 +142,13 @@ public class MainActivity extends UnityPlayerActivity {
                 TileButtonEvent buttonData = intent.getParcelableExtra(TileEvent.TILE_EVENT_DATA);
                 appendToUI("Button event received\n" + buttonData.toString()+ "\n\n");
                 try {
+                    if(buttonData.getElementID()==1)
+                        VolumeUp();
+                    else if(buttonData.getElementID()==2)
+                        VolumeDown();
                     Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-                    Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
-                    r.play();
+                    MediaPlayer mp = MediaPlayer.create(getApplicationContext(), notification);
+                    mp.start();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -246,9 +251,9 @@ public class MainActivity extends UnityPlayerActivity {
 
     public PageLayout createButtonLayout() {
         return new PageLayout(
-                new FlowPanel(15, 0, 260, 105, FlowPanelOrientation.VERTICAL)
-                        .addElements(new TextButton(0, 5, 210, 45).setMargins(0, 5, 0 ,0).setId(1).setPressedColor(Color.BLUE))
-                        .addElements(new TextButton(0, 0, 210, 45).setMargins(0, 5, 0 ,0).setId(2).setPressedColor(Color.GREEN))
+                new FlowPanel(15, 0, 260, 15, FlowPanelOrientation.VERTICAL)
+                        .addElements(new TextButton(0, 5, 21, 45).setMargins(0, 5, 0 ,0).setId(1).setPressedColor(Color.BLUE))
+                        .addElements(new TextButton(0, 0, 21, 45).setMargins(0, 5, 0 ,0).setId(2).setPressedColor(Color.GREEN))
         );
     }
 
@@ -275,148 +280,4 @@ public class MainActivity extends UnityPlayerActivity {
         appendToUI("Band is connecting...\n");
         return ConnectionState.CONNECTED == client.connect().await();
     }
-
-
-/*
-    private BandClient client = null;
-    private Button btnStart;
-    private TextView txtStatus;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        txtStatus = (TextView) findViewById(R.id.txtStatus);
-
-        btnStart = (Button) findViewById(R.id.btnStart);
-        btnStart.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                txtStatus.setText("");
-                new appTask().execute();
-            }
-        });
-    }
-
-    private BroadcastReceiver messageReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.getAction() == TileEvent.ACTION_TILE_OPENED) {
-                TileEvent tileOpenData = intent.getParcelableExtra(TileEvent.TILE_EVENT_DATA);
-                appendToUI("Tile open event received\n" + tileOpenData.toString() + "\n\n");
-            } else if (intent.getAction() == TileEvent.ACTION_TILE_BUTTON_PRESSED) {
-                TileButtonEvent buttonData = intent.getParcelableExtra(TileEvent.TILE_EVENT_DATA);
-                appendToUI("Button event received\n" + buttonData.toString() + "\n\n");
-            } else if (intent.getAction() == TileEvent.ACTION_TILE_CLOSED) {
-                TileEvent tileCloseData = intent.getParcelableExtra(TileEvent.TILE_EVENT_DATA);
-                appendToUI("Tile close event received\n" + tileCloseData.toString() + "\n\n");
-            }
-        }
-    };
-
-    private PageLayout createButtonLayout() {
-        return new PageLayout(
-                new FlowPanel(15, 0, 260, 105, FlowPanelOrientation.VERTICAL)
-                        .addElements(new FilledButton(0, 5, 210, 45).setMargins(0, 5, 0, 0).setId(12).setBackgroundColor(Color.RED))
-                        .addElements(new TextButton(0, 0, 210, 45).setMargins(0, 5, 0, 0).setId(21).setPressedColor(Color.BLUE))
-        );
-    }
-
-
-    private boolean addTile(BandClient c){
-        try {
-            BitmapFactory.Options options = new BitmapFactory.Options();
-            options.inScaled = false;
-            options.inPreferredConfig = Bitmap.Config.ARGB_8888;
-            Bitmap tileIcon = BitmapFactory.decodeResource(getBaseContext().getResources(), R.raw.tile_icon_large, options);
-            return MSBandWrapper.addTile(c, this, tileIcon, createButtonLayout());
-        }
-        catch (Exception e){
-            appendToUI(e.toString());
-            return false;
-        }
-    }
-
-    private class appTask extends AsyncTask<Void, Void, Void> {
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                BandInfo[] devices = BandClientManager.getInstance().getPairedBands();
-                appendToUI(new Integer(devices.length).toString());
-                if (devices.length == 0)
-                {
-                    appendToUI("Band isn't paired with your phone.");
-                }
-                client = BandClientManager.getInstance().create(getBaseContext(), devices[0]);
-
-                //Pair<BandClient,String> connectResult = MSBandWrapper.getConnectedBandClient(client==null?null:client,getBaseContext());
-                //client = connectResult.first;
-                //appendToUI(connectResult.second);
-
-                if (client!=null) {
-                    appendToUI("Band is connected.\n");
-                    if (addTile(client)){
-
-                        MSBandWrapper.updatePages(client);
-                    }
-                } else {
-                    appendToUI("Band isn't connected. Please make sure bluetooth is on and the band is in range.\n");
-                }
-            } catch (BandException e) {
-                String exceptionMessage = "";
-                switch (e.getErrorType()) {
-                    case DEVICE_ERROR:
-                        exceptionMessage = "Please make sure bluetooth is on and the band is in range.\n";
-                        break;
-                    case UNSUPPORTED_SDK_VERSION_ERROR:
-                        exceptionMessage = "Microsoft Health BandService doesn't support your SDK Version. Please update to latest SDK.\n";
-                        break;
-                    case SERVICE_ERROR:
-                        exceptionMessage = "Microsoft Health BandService is not available. Please make sure Microsoft Health is installed and that you have the correct permissions.\n";
-                        break;
-                    case BAND_FULL_ERROR:
-                        exceptionMessage = "Band is full. Please use Microsoft Health to remove a tile.\n";
-                        break;
-                    default:
-                        exceptionMessage = "Unknown error occured: " + e.getMessage() + "\n";
-                        break;
-                }
-                appendToUI(exceptionMessage);
-
-            } catch (Exception e) {
-                appendToUI(e.getMessage());
-            }
-            return null;
-        }
-    }
-
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        MSBandWrapper.registerMessageReceiver(getBaseContext(),messageReceiver);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        MSBandWrapper.unregisterMessageReceiver(getBaseContext(),messageReceiver);
-    }
-
-    @Override
-    protected void onDestroy() {
-        MSBandWrapper.destroyClient(client);
-        super.onDestroy();
-    }
-
-    void appendToUI(final String string) {
-        this.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                txtStatus.append(string);
-            }
-        });
-    }
-//*/
 }
