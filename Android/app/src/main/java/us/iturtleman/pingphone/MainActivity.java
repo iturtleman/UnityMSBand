@@ -83,6 +83,15 @@ public class MainActivity extends UnityPlayerActivity {
         filter.addAction(TileEvent.ACTION_TILE_CLOSED);
         registerReceiver(messageReceiver, filter);
         audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+
+        try
+        {
+            if(getConnectedBandClient())
+                appendToUI("Connected at startup");
+        }
+        catch (Exception e){
+            appendToUI(e.toString());
+        }
     }
 
     public void CreateBandTile(){
