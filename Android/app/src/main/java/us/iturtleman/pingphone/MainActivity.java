@@ -86,8 +86,7 @@ public class MainActivity extends UnityPlayerActivity {
 
         try
         {
-            if(getConnectedBandClient())
-                appendToUI("Connected at startup");
+            new CreateBand().execute(true);
         }
         catch (Exception e){
             appendToUI(e.toString());
@@ -260,9 +259,10 @@ public class MainActivity extends UnityPlayerActivity {
 
     public PageLayout createButtonLayout() {
         return new PageLayout(
-                new FlowPanel(15, 0, 260, 15, FlowPanelOrientation.VERTICAL)
-                        .addElements(new TextButton(0, 5, 21, 45).setMargins(0, 5, 0 ,0).setId(1).setPressedColor(Color.BLUE))
-                        .addElements(new TextButton(0, 0, 21, 45).setMargins(0, 5, 0 ,0).setId(2).setPressedColor(Color.GREEN))
+                new FlowPanel(15, 0, 260, 105, FlowPanelOrientation.VERTICAL)
+                        .addElements(
+                                new TextButton(0, 5, 210, 45).setMargins(0, 5, 0 ,0).setId(1).setPressedColor(Color.BLUE)
+                                ,new TextButton(0, 0, 210, 45).setMargins(0, 5, 0 ,0).setId(2).setPressedColor(Color.GREEN))
         );
     }
 
